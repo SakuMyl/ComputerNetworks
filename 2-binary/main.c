@@ -6,6 +6,7 @@
 #include <unistd.h>      // read, ...
 #include <stdlib.h>
 #include "template.h"
+#include "studentnumber.h"
 
 #define MAXLINE 80
 
@@ -63,13 +64,17 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    const char *message = "715298\n2-binary\n";
+    char *number = student_number();
+    char message[17];
+    memcpy(message, number, 6);
+    memcpy(message + 6, "\n2-binary\n", 11);
+    free(number);
     if (!writemessage(message, sockfd)) return 1;
-    printf("before first loop");
     int i = 0;
     while((n = read(sockfd, recvline + i, MAXLINE - i)) > 0) {
         i += n;
         recvline[i] = 0;
+        if (recvline[i - 1] == '\n') break;
     }
 
     printf("First message: %s\n", recvline);

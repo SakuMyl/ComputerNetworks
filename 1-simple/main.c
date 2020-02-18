@@ -4,6 +4,8 @@
 #include <stdio.h>       // defines printf, perror, ...
 #include <arpa/inet.h>   // inet_pton, ...
 #include <unistd.h>      // read, ...
+#include <stdlib.h>
+#include "studentnumber.h"
 
 #define MAXLINE 80
 
@@ -45,8 +47,14 @@ int main(int argc, char **argv)
         perror("connect error");
         return 1;
     }
-
-    const char *message = "715298\n1-simple\n";
+    char *number = student_number();
+    if (!number) {
+        perror("error reading student number");
+    }
+    char message[17];
+    memcpy(message, number, 6);
+    memcpy(message + 6, "\n1-simple\n", 11);
+    free(number);
     size_t length = strlen(message);
     int bytes_written = 0;
     while (bytes_written < length) {
