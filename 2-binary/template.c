@@ -5,10 +5,10 @@
 int parse_str(const char *str, struct numbers *n)
 {
 	int ret;
-	unsigned short sa, sc;
-	ret = sscanf(str, "%hu %u %hu %hu %u", &sa, &n->b, &sc, &n->d, &n->e);
-	n->a = sa;
-	n->c = sc;
+	//unsigned short sa, sc;
+	ret = sscanf(str, "%hhu %u %hhu %hu %u", &n->a, &n->b, &n->c, &n->d, &n->e);
+	//n->a = sa;
+	//n->c = sc;
 	return ret;
 }
 

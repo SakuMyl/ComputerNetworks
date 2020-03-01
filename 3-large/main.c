@@ -5,7 +5,6 @@
 #include <arpa/inet.h>   // inet_pton, ...
 #include <unistd.h>      // read, ...
 #include <stdlib.h>
-#include "template.h"
 #include "studentnumber.h"
 
 #define MAXLINE 80
@@ -19,16 +18,39 @@ int writemessage(const char *message, int sockfd)
         i += n;
     }
     if (n < 0) {
-        perror("error writing to socket");
+        perror("Error writing to socket");
         return 0;
     }
     return 1;
 }
 
+int write_bytes(int sockfd, void *buf, int bytes)
+{
+    uint8_t *buffer = buf;
+    int i = 0, n = 0;
+    for (; i < bytes && (n = write(sockfd, buffer + i, bytes - i)) > 0; i += n);
+    if (n < 0) {
+        perror("Error reading from socket");
+        return 0;
+    }
+    return i;
+}
+
+int read_bytes(int sockfd, void *buf, int bytes)
+{
+    uint8_t *buffer = buf;
+    int i = 0, n = 0;
+    for (; i < bytes && (n = read(sockfd, buffer + i, bytes - i)) > 0; i += n);
+    if (n < 0) {
+        perror("Error reading socket");
+        return 0;
+    }
+    return i;
+}
+
 int main(int argc, char **argv)
 {
-    int sockfd, n;
-    char recvline[MAXLINE + 1];  // merkkipuskuri, johon luetaan tietoa
+    int sockfd;
     struct sockaddr_in servaddr;  // tietorakenne, joka esittää osoitetta
 
     const char *address = "195.148.124.236";
@@ -67,72 +89,27 @@ int main(int argc, char **argv)
     char *number = student_number();
     char message[17];
     memcpy(message, number, 6);
-    memcpy(message + 6, "\n2-binary\n", 11);
+    memcpy(message + 6, "\n3-large\n", 11);
     free(number);
     if (!writemessage(message, sockfd)) return 1;
-    int i = 0;
-    while((n = read(sockfd, recvline + i, MAXLINE - i)) > 0) {
-        i += n;
-        recvline[i] = 0;
-        if (recvline[i - 1] == '\n') break;
-    }
-
-    // If read return value was 0, loop terminates, without error
-    if (n < 0) {
-        perror("read error");
-        return 1;
-    }
-    struct numbers numbers;
-    int parse = parse_str(recvline, &numbers);
-    if (parse != 5) {
-        perror("parsing error");
-        return 1;
-    }
-    uint32_t b = htonl(numbers.b);
-    uint16_t d = htons(numbers.d);
-    uint32_t e = htonl(numbers.e);
-    write(sockfd, &numbers.a, 1);
-    write(sockfd, &b, 4);
-    write(sockfd, &numbers.c, 1);
-    write(sockfd, &d, 2);
-    write(sockfd, &e, 4);
-    i = 0;
-    while ((n = read(sockfd, recvline + i, 12 - i)) > 0) {
-        i += n;
-        if (i == 12) break;
-    }
-    if (n < 0) {
-        perror("read error");
-        return 1;
-    }
-
-    struct numbers new_numbers;
-    uint32_t *pb = (uint32_t *) (recvline + 1);
-    *pb = ntohl(*pb);
-    uint16_t *pd = (uint16_t *) (recvline + 6);
-    *pd = ntohs(*pd);
-    uint32_t *pe = (uint32_t *) (recvline + 8);
-    *pe = ntohl(*pe);
-    new_numbers.a = recvline[0];
-    new_numbers.b = *pb;
-    new_numbers.c = recvline[5];
-    new_numbers.d = *pd;
-    new_numbers.e = *pe;
-    char str[MAXLINE];
-    output_str(str, MAXLINE - 1, &new_numbers);
-    if (!writemessage(str, sockfd)) {
-        return 1;
-    }
-    i = 0;
-    while ((n = read(sockfd, recvline + i, MAXLINE - i)) > 0) {
-        i += n;
-        if (recvline[i] == '\n') break;
-        recvline[i] = 0;
-    }
-
-    if (n < 0) {
-        perror("read error");
-        return 1;
+    while (1) {
+        uint32_t bytes_to_read;
+        uint8_t *buf = (uint8_t *)&bytes_to_read;
+        int ret = read_bytes(sockfd, buf, 4);
+        if (ret != 4) return 1;
+        bytes_to_read = ntohl(bytes_to_read);
+        uint8_t *msg = malloc(bytes_to_read);
+        if (!msg) {
+            perror("Error allocating memory");
+            return 1;
+        }
+        ret = read_bytes(sockfd, msg, bytes_to_read);
+        free(msg);
+        if (ret != bytes_to_read) return 1;
+        uint32_t bytes = htonl(bytes_to_read);
+        ret = write_bytes(sockfd, &bytes, 4);
+        if (ret != 4) return 1;
+        if (!bytes_to_read) return 0;
     }
     return 0;
 }
