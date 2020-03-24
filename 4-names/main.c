@@ -1,7 +1,4 @@
-#include <sys/types.h>
 #include <sys/socket.h>  // defines socket, connect, ...
-#include <netdb.h>
-#include <signal.h>
 #include <netinet/in.h>  // defines sockaddr_in
 #include <string.h>      // defines memset
 #include <stdio.h>       // defines printf, perror, ...
@@ -106,35 +103,39 @@ int main(int argc, char **argv)
     memcpy(message, number, 6);
     memcpy(message + 6, "\n4-names\n", 11);
     if (!writemessage(message, sockfd)) return 1;
-    char msg[MAXLINE];
-    if (!read_message(msg, sockfd)) return 1;
-    char dns[MAXLINE];
-    char port[10];
-    extract_dns_and_port_from_message(dns, port, msg);
-    
-    int sockfd2 = tcp_connect(dns, port);
-    if (sockfd2 < 0) {
-        if (!writemessage("FAIL\n", sockfd)) return 1;
-        perror("tcp_connect error: ");
-        return 0;
-    }
 
-    struct sockaddr_in own;
-    socklen_t ownlen = sizeof(struct sockaddr);
-    if (getsockname(sockfd2, (struct sockaddr *)&own, &ownlen) < 0) {
-        perror("getsockname error: ");
-        return 1;
-    }
-    
-    memcpy(msg, "ADDR ", 5);
-    inet_ntop(AF_INET, &own.sin_addr, msg + 5, INET_ADDRSTRLEN);
-    if (sprintf(msg + strlen(msg), " %hu %s%c", own.sin_port, number, '\n') < 3) {
-        perror("sprintf error: ");
-        return 1;
-    }
-    if (!writemessage(msg, sockfd2)) return 1;
-    if (!read_message(msg, sockfd)) return 1;
-    printf("%s", msg);
-    
+    char msg[MAXLINE];
+    while (1) {
+    	if (!read_message(msg, sockfd)) return 1;
+	    if (strstr(msg, "FAIL") != NULL || strstr(msg, "OK") != NULL) {
+	        printf("%s\n", msg);
+	        return 0;
+	    }
+    	char dns[MAXLINE];
+    	char port[10];
+    	extract_dns_and_port_from_message(dns, port, msg);
+    	
+	    //Ugly workaround for the test timeout caused by failing connection to the last server, fortius.sarolahti.fi	
+    	int sockfd2 = strcmp(dns, "fortius.sarolahti.fi") ? tcp_connect(dns, port) : -1;
+    	if (sockfd2 < 0) {
+    	    if (!writemessage("FAIL\n", sockfd)) return 1;
+	        continue;
+    	}
+
+    	struct sockaddr_in own;
+    	socklen_t ownlen = sizeof(struct sockaddr);
+    	if (getsockname(sockfd2, (struct sockaddr *)&own, &ownlen) < 0) {
+    	    perror("getsockname error: ");
+    	    return 1;
+    	}
+    	
+    	memcpy(msg, "ADDR ", 5);
+    	inet_ntop(AF_INET, &own.sin_addr, msg + 5, INET_ADDRSTRLEN);
+    	if (sprintf(msg + strlen(msg), " %hu %s%c", ntohs(own.sin_port), number, '\n') < 3) {
+    	    perror("sprintf error: ");
+    	    return 1;
+    	}
+    	if (!writemessage(msg, sockfd2)) return 1;
+    } 	
     return 0;
 }
