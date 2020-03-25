@@ -28,35 +28,25 @@ int writemessage(const char *message, int sockfd)
 int main(int argc, char **argv)
 {
     int sockfd, n;
-    char recvline[MAXLINE + 1];  // merkkipuskuri, johon luetaan tietoa
-    struct sockaddr_in servaddr;  // tietorakenne, joka esittää osoitetta
+    char recvline[MAXLINE + 1];
+    struct sockaddr_in servaddr;
 
     const char *address = "195.148.124.236";
 
-    // Luodaan pistoke, joka käyttää IPv4 - protokollaa (AF_INET)
-    // ja TCP-protokollaa (SOCK_STREAM)
-    // Paluuarvo on pistokkeen tunniste, tai -1 jos luominen ei onnistunut
     if ( (sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         perror("socket error");
         return 1;
     }
 
-    // Alustetaan osoitetta esittävä tietorakenne nollilla.
-    // Sen jälkeen kerrotaan että osoiteperhe on IPv4,
-    // ja määritellään palvelimen portti johon tullaan ottamaan yhteyttä
     memset(&servaddr, 0, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
     servaddr.sin_port   = htons(5000);
 
-    // Seuraava funktio muuntaa ASCII-muotoisen IP-osoitteen binääriseksi.
-    // Se talletetaan servaddr - rakenteeseen.
     if (inet_pton(AF_INET, address, &servaddr.sin_addr) <= 0) {
         fprintf(stderr, "inet_pton error for %s\n", address);
         return 1;
     }
 
-    // Avataan TCP-yhteys käyttäen edellä määriteltyä servaddr - rakennetta.
-    // Jos yhteydenotto onnistui, palautetaan 0. Muuten negatiivinen arvo.
     if (connect(sockfd,
                 (struct sockaddr *) &servaddr,
                 sizeof(servaddr)) < 0) {
@@ -77,7 +67,6 @@ int main(int argc, char **argv)
         if (recvline[i - 1] == '\n') break;
     }
 
-    // If read return value was 0, loop terminates, without error
     if (n < 0) {
         perror("read error");
         return 1;

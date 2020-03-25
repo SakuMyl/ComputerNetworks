@@ -46,10 +46,6 @@ int tcp_connect(const char *host, const char *serv)
     }
     ressave = res; // so that we can release the memory afterwards
 
-    // res-rakenne osoittaa linkitettyyn listaan. K‰yd‰‰n l‰pi linkitetty‰
-    // listaa yksi kerrallaan ja yritet‰‰n yhdist‰‰ saatuun osoitteeseen.
-    // res-rakenne sis‰lt‰‰ kaikki parameterit mit‰ tarvitsemme socket-
-    // ja connect - kutsuissa.
     do {
            sockfd = socket(res->ai_family, res->ai_socktype,
                             res->ai_protocol);
@@ -58,9 +54,6 @@ int tcp_connect(const char *host, const char *serv)
 
             print_address("Trying to connect", res);
 
-            // Mik‰li yhteys onnistuu, silmukka keskeytet‰‰n v‰littˆm‰sti,
-            // koska meill‰ on toimiva yhteys, eik‰ loppuja osoitteita
-            // tarvitse kokeilla
             if (connect(sockfd, res->ai_addr, res->ai_addrlen) == 0)
                   break;          /* success */
 
@@ -69,8 +62,6 @@ int tcp_connect(const char *host, const char *serv)
             close(sockfd);  /* ignore this one */
     } while ( (res = res->ai_next) != NULL);
 
-    // P‰‰stiinkˆ linkitetyn listan loppuun, mutta yhteys ei onnistunut?
-    // ==> virhe
     if (res == NULL) {      /* errno set from final connect() */
             fprintf(stderr, "tcp_connect error for %s, %s\n", host, serv);
             sockfd = -1;
@@ -78,7 +69,6 @@ int tcp_connect(const char *host, const char *serv)
             print_address("We are using address", res);
     }
 
-    // J‰rjestelm‰ on varannut muistin linkitetylle listalle, se pit‰‰ vapauttaa
     freeaddrinfo(ressave);
 
     return sockfd;
