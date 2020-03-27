@@ -94,7 +94,6 @@ int main(int argc, char **argv)
     memcpy(message + 6, "\n5-server\n", 11);
     if (!write_message(message, sockfd)) return 1;
     
-    printf("Student number sent\n");
     struct sockaddr_in own2;
     socklen_t ownlen = sizeof(struct sockaddr);
     if (getsockname(sockfd, (struct sockaddr *)&own2, &ownlen) < 0) {
@@ -103,9 +102,7 @@ int main(int argc, char **argv)
     short port = 7200;
     while (1) {
         char msg[MAXLINE];
-        printf("Before reading first message\n");
         if (!read_message(msg, sockfd)) return 1;
-        printf("First message read %s\n", msg);
         if (strstr(msg, "OK") || strstr(msg, "FAIL")) {
             printf("%s", msg);
             return 0;
@@ -120,7 +117,6 @@ int main(int argc, char **argv)
             own.sin_family = AF_INET;
             own.sin_addr.s_addr = INADDR_ANY;
             own.sin_port = htons(port);
-            //own.sin_port = htons(7200);
             bind(sockfd2, (struct sockaddr *)&own, sizeof(struct sockaddr));
             listen(sockfd2, 10);
             char ipstring[INET_ADDRSTRLEN];
@@ -129,26 +125,23 @@ int main(int argc, char **argv)
                 perror("sprintf error");
                 return 1;
             }
-            printf("Before writing SERV message: %s\n", msg);
             if (!write_message(msg, sockfd)) return 1;
             incoming.sin_family = AF_INET;
             incoming.sin_addr.s_addr = INADDR_ANY;
             socklen_t incominglen = sizeof(struct sockaddr);
-            printf("Before accepting\n");
             if((connfd = accept(sockfd2, (struct sockaddr *)&incoming, &incominglen)) < 0) {
                 perror("accept error");
                 return 1;
             }
         }
-        uint32_t bytes;
-        printf("Before reading byte count\n");
-        if (read_bytes(connfd, &bytes, 4) < 4) return 1;
-        bytes = ntohl(bytes);
-        printf("Bytes to send: %d", bytes);
-        uint8_t msg_back[bytes];
-        memset(msg_back, 'A', bytes);
-        printf("Before writing bytes\n");
-        if (write_bytes(connfd, msg_back, bytes) < bytes) return 1;
+        while (1) {
+            uint32_t bytes;
+            if (read_bytes(connfd, &bytes, 4) < 4) break;
+            bytes = ntohl(bytes);
+            uint8_t msg_back[bytes];
+            memset(msg_back, 'A', bytes);
+            if (write_bytes(connfd, msg_back, bytes) < bytes) return 1;
+        }
         port++;
     }
     
